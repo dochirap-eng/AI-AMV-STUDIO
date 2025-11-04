@@ -1,0 +1,51 @@
+.dashboard {
+  padding: 80px 20px;
+  background: linear-gradient(180deg, #0b111a 0%, #121c29 100%);
+  color: white;
+  min-height: 100vh;
+  text-align: center;
+}
+
+.dashboard-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 50px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 15px rgba(0, 200, 255, 0.3);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  justify-content: center;
+  align-items: center;
+}
+
+.dash-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 200, 255, 0.2);
+  border-radius: 15px;
+  padding: 30px;
+  backdrop-filter: blur(10px);
+  transition: all 0.4s ease;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(0, 200, 255, 0.1);
+}
+
+.dash-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 0 25px rgba(0, 200, 255, 0.3);
+  border-color: rgba(0, 200, 255, 0.5);
+}
+
+.dash-card h3 {
+  color: #00c8ff;
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+}
+
+.dash-card p {
+  color: #b8dfff;
+  font-size: 0.9rem;
+}

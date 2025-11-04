@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI AMV STUDIO 💫</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Background Video -->
+  <video autoplay loop muted playsinline class="bg-video">
+    <source src="/bg.mp4" type="video/mp4" />
+  </video>
+
+  <!-- Overlay -->
+  <div class="overlay"></div>
+
+  <!-- Upload Animation Video -->
+  <video id="uploadAnimation" class="upload-animation" autoplay loop muted playsinline style="display: none;">
+    <source src="/assets/analysis_scene.mp4" type="video/mp4" />
+  </video>
+
+  <!-- Render Animation Video -->
+  <video id="renderAnimation" class="upload-animation" autoplay loop muted playsinline style="display: none;">
+    <source src="/assets/render_scene.mp4" type="video/mp4" />
+  </video>
+
+  <!-- Main Content -->
+  <div class="content" id="mainContent">
+    <h1 class="title">💞 AI AMV STUDIO 💞</h1>
+    <p class="subtitle">Created with 💖 by <b>Anish & GPT-5</b></p>
+
+    <div class="upload-box" id="uploadBox">
+      <label>🎵 Upload Your Song</label>
+      <input type="file" id="fileInput" />
+      <button onclick="startAnalysis()">Start Analysis</button>
+    </div>
+
+    <div class="status" id="statusBox">
+      <p>✨ Waiting for upload...</p>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

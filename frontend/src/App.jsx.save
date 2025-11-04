@@ -1,0 +1,39 @@
+import React from "react";
+import "./App.css";
+
+function App() {
+  return (
+    <div className="app-container">
+      {/* Navbar */}
+      <nav className="navbar">
+        <h1 className="logo">AI AMV STUDIO</h1>
+        <ul className="nav-links">
+          <li>Home</li>
+          <li>Projects</li>
+          <li>AI Editor</li>
+          <li>About</li>
+
+
+      {/* Dashboard */}
+      <div className="dashboard">
+        <div className="card glow">
+          <h2>🎵 Auto AMV Creator</h2>
+          <p>Generate anime music videos instantly with AI.</p>
+          <button>Create Now</button>
+        </div>
+        <div className="card glow">
+          <h2>🎬 Clip Sync Engine</h2>
+          <p>Perfect lip & beat sync using smart frame mapping.</p>
+          <button>Try Sync</button>
+        </div>
+        <div className="card glow">
+          <h2>🧠 AI Analyzer</h2>
+          <p>Analyze lyrics, mood & create cinematic cut lists.</p>
+          <button>Analyze Song</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
