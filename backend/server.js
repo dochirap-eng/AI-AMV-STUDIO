@@ -53,9 +53,7 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     if (!response.ok) {
       const errText = await response.text();
       console.error("❌ HF Error:", errText);
-      return res
-        .status(500)
-        .json({ error: "HF API Error", detail: errText });
+      return res.status(500).json({ error: "HF API Error", detail: errText });
     }
 
     // 💾 Output video
