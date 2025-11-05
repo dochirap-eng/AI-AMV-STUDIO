@@ -1,0 +1,19 @@
+{
+  "name": "ai-amv-studio-root",
+  "version": "1.0.0",
+  "description": "Root package to manage deployment for the monorepo structure on Render.",
+  "main": "server.js",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "build": "echo 'No build step required for root level Node API' && exit 0",
+    "predeploy": "echo 'Starting backend deployment setup...'",
+    "postinstall": "cd backend && npm install"
+  },
+  "keywords": [
+    "ai",
+    "amv",
+    "node"
+  ],
+  "author": "",
+  "license": "ISC"
+}
