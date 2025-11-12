@@ -1,0 +1,18 @@
+ * Tip: There are .env files present. Install python-dotenv to use them.
+🚀 Log Viewer running on http://localhost:5051/
+ * Serving Flask app 'log_viewer'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5051
+ * Running on http://100.123.57.79:5051
+[33mPress CTRL+C to quit[0m
+ * Tip: There are .env files present. Install python-dotenv to use them.
+🚀 Log Viewer running on http://localhost:5051/
+ * Serving Flask app 'log_viewer'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5051
+ * Running on http://100.123.57.79:5051
+[33mPress CTRL+C to quit[0m

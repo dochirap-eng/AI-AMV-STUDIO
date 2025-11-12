@@ -1,0 +1,55 @@
+[
+  {
+    "name": "Audio Enhancer \u2013 BPM Finder",
+    "link": "https://audioenhancer.ai/bpm-finder/",
+    "type": "audio",
+    "status": "active"
+  },
+  {
+    "name": "Vidio.ai \u2013 Scene Detector",
+    "link": "https://www.vidio.ai/tools/video-scene-detector",
+    "type": "video",
+    "status": "active"
+  },
+  {
+    "name": "Ircam Amplify \u2013 Lyric Alignment",
+    "link": "https://www.ircamamplify.io/usecase/align-lyrics-with-music-automatically",
+    "type": "text",
+    "status": "active"
+  },
+  {
+    "name": "TensorPix",
+    "link": "https://tensorpix.ai/",
+    "type": "video",
+    "status": "active"
+  },
+  {
+    "name": "Runway Gen-2",
+    "link": "https://runwayml.com/",
+    "type": "video",
+    "status": "active"
+  },
+  {
+    "name": "AutoFound AI 1762942496",
+    "link": "https://huggingface.co/spaces",
+    "type": "utility",
+    "status": "active"
+  },
+  {
+    "name": "AutoFound AI 1762944321",
+    "link": "https://huggingface.co/spaces",
+    "type": "utility",
+    "status": "active"
+  },
+  {
+    "name": "AutoFound AI 1762944739",
+    "link": "https://huggingface.co/spaces",
+    "type": "utility",
+    "status": "active"
+  },
+  {
+    "name": "AutoFound AI 1762944750",
+    "link": "https://huggingface.co/spaces",
+    "type": "utility"
+  }
+]

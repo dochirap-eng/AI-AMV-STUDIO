@@ -1,0 +1,98 @@
+/* Background video */
+.bg-video {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+/* Dark overlay */
+.overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(3px);
+  z-index: -1;
+}
+
+/* Main content */
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  color: white;
+}
+
+.container {
+  max-width: 450px;
+  margin: 0 auto;
+  padding-top: 60px;
+  text-align: center;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  text-shadow: 0px 0px 12px #ff00ff;
+}
+
+.subtitle {
+  opacity: 0.8;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.upload-box,
+.prompt-box {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(6px);
+}
+
+.upload-box label,
+.prompt-box label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+input[type="file"],
+textarea {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+textarea {
+  resize: none;
+  height: 70px;
+}
+
+#startBtn {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(45deg, #ff007a, #8e2cff);
+  border: none;
+  color: white;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.status {
+  margin-top: 15px;
+  padding: 12px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 10px;
+  font-size: 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+#previewBox {
+  margin-top: 20px;
+}

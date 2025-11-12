@@ -1,117 +1,76 @@
 import express from "express";
 import multer from "multer";
-import fetch from "node-fetch";
+import cors from "cors";
 import fs from "fs";
 import path from "path";
-import FormData from "form-data";
-import dotenv from "dotenv";
-
-// 🌍 Load environment variables
-dotenv.config();
+import os from "os";
 
 const app = express();
+const PORT = 5000;
 
-// 🔥 Load Hugging Face API key from .env file (safe method)
-const HF_API_KEY = process.env.HF_API_KEY;
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(process.cwd(), "frontend", "dist")));
 
-// 💾 Upload setup
-const UPLOAD_DIR = "./uploads";
-// Ensure uploads directory exists relative to the backend folder
-fs.mkdirSync(UPLOAD_DIR, { recursive: true }); 
-const upload = multer({ dest: UPLOAD_DIR });
+const STORAGE = path.join(os.homedir(), "AI-AMV-STUDIO", "storage");
+const TEMP = path.join(STORAGE, "temp");
+const OUTPUT = path.join(STORAGE, "output");
 
-// 🧠 Hugging Face model endpoint
-const MODEL_URL =
-  "https://api-inference.huggingface.co/models/stabilityai/stable-video-diffusion-img2vid";
+for (const dir of [STORAGE, TEMP, OUTPUT]) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
 
-// 🌐 Allow CORS
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  next();
-});
+const upload = multer({ dest: TEMP });
 
-// **********************************************
-// ********* Zaroori Frontend Fix Code **********
-// **********************************************
-
-// 1. Static files (CSS/JS/Images) ko serve karo
-// Path to the frontend build directory (from /AI-AMV-STUDIO/backend to /AI-AMV-STUDIO/frontend/dist)
-const frontendPath = path.join(__dirname, '..', 'frontend', 'dist');
-console.log(`Serving static files from: ${frontendPath}`);
-app.use(express.static(frontendPath));
-
-// **********************************************
-// **********************************************
-
-// 🧩 Upload + cloud processing
-app.post("/upload", upload.single("file"), async (req, res) => {
+// 🟢 Create new AI-AMV task
+app.post("/api/tasks/new", upload.fields([{ name: "audio" }, { name: "video" }]), (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const id = "task_" + Date.now();
+    const prompt = req.body.prompt || "default edit";
+    const taskPath = path.join(TEMP, `${id}.json`);
 
-    console.log("📤 Upload received:", req.file.originalname);
+    const taskData = {
+      id,
+      prompt,
+      audio: req.files.audio ? req.files.audio[0].path : null,
+      videos: req.files.video ? req.files.video.map(v => v.path) : [],
+      status: "pending",
+      created_at: new Date().toISOString(),
+    };
 
-    const form = new FormData();
-    // Using path.resolve to ensure correct file path in Render environment
-    form.append("file", fs.createReadStream(path.resolve(req.file.path))); 
-
-    console.log("☁️ Sending to Hugging Face model...");
-
-    const response = await fetch(MODEL_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${HF_API_KEY}` },
-      body: form,
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("❌ HF Error:", errText);
-      return res.status(500).json({ error: "HF API Error", detail: errText });
-    }
-
-    // ... (rest of the output video processing code was omitted here)
-    // Assuming the rest of the file response handling logic will follow here.
-
-    // Temporary success response to keep the server working
-    res.status(200).json({ message: "File uploaded and sent to Hugging Face (response part omitted for brevity).", filename: req.file.originalname });
-
-
-  } catch (error) {
-    console.error("🔥 Server Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  } finally {
-    // Cleanup the uploaded file to save space
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error("Error cleaning up file:", err);
-      });
-    }
+    fs.writeFileSync(taskPath, JSON.stringify(taskData, null, 2));
+    console.log(`[SERVER] ✅ Task created: ${id}`);
+    res.json({ ok: true, taskId: id });
+  } catch (err) {
+    console.error("❌ Task creation error:", err);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
+// 🧠 Status dashboard endpoint
+app.get("/status", (req, res) => {
+  const uptime_seconds = process.uptime();
+  const backend = "running";
+  const ffmpeg = "installed";
 
-// **********************************************
-// ********* Zaroori Frontend Fix Code **********
-// **********************************************
+  const outputs = fs.existsSync(OUTPUT) ? fs.readdirSync(OUTPUT).length : 0;
+  const upload_files = fs.existsSync(TEMP) ? fs.readdirSync(TEMP).length : 0;
 
-// 2. Catch-all route for React app (jo bhi request aaye, index.html bhej do)
-// Yahaan se aapka React app serve hoga
-app.get('*', (req, res) => {
-    // Sirf API routes ko chhod kar, baaki sab requests ko index.html par redirect karo
-    if (req.path.startsWith('/api')) {
-        return; // API calls ko Express handle karega
-    }
-    res.sendFile(path.join(frontendPath, 'index.html'));
+  res.json({
+    backend,
+    ffmpeg,
+    outputs,
+    upload_files,
+    uptime_seconds,
+  });
 });
 
-// **********************************************
-// **********************************************
+// 🟢 Serve Frontend
+app.get("*", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "frontend", "dist", "index.html"));
+});
 
-
-// ZAROORI: Port ko hamesha environment variable se uthaao
-const PORT = process.env.PORT || 8080; 
-
+// 🚀 Start Server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Backend running on port ${PORT}`);
 });

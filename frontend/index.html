@@ -3,44 +3,73 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI AMV STUDIO 💫</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>💫 AI AMV STUDIO — Premium Edition 💫</title>
+  <link rel="stylesheet" href="/src/styles.css" />
 </head>
 <body>
-  <!-- Background Video -->
-  <video autoplay loop muted playsinline class="bg-video">
+  <video autoplay loop muted playsinline class="bg">
     <source src="/bg.mp4" type="video/mp4" />
   </video>
 
-  <!-- Overlay -->
-  <div class="overlay"></div>
+  <div class="container">
+    <h1>💞 AI AMV STUDIO 💞</h1>
+    <p>Artist: Anish | Distributed by: SHAAN AMV</p>
 
-  <!-- Upload Animation Video -->
-  <video id="uploadAnimation" class="upload-animation" autoplay loop muted playsinline style="display: none;">
-    <source src="/assets/analysis_scene.mp4" type="video/mp4" />
-  </video>
+    <div class="upload-box">
+      <label>🎵 Upload Song</label>
+      <input type="file" id="audioFile" accept="audio/*">
 
-  <!-- Render Animation Video -->
-  <video id="renderAnimation" class="upload-animation" autoplay loop muted playsinline style="display: none;">
-    <source src="/assets/render_scene.mp4" type="video/mp4" />
-  </video>
+      <label>🎬 Upload Clips (optional)</label>
+      <input type="file" id="videoFiles" multiple accept="video/*">
 
-  <!-- Main Content -->
-  <div class="content" id="mainContent">
-    <h1 class="title">💞 AI AMV STUDIO 💞</h1>
-    <p class="subtitle">Created with 💖 by <b>Anish & GPT-5</b></p>
+      <label>🧠 Prompt (e.g., “Sad Naruto edit with slow beat”)</label>
+      <textarea id="promptInput" rows="3" placeholder="Enter your edit style prompt here..."></textarea>
 
-    <div class="upload-box" id="uploadBox">
-      <label>🎵 Upload Your Song</label>
-      <input type="file" id="fileInput" />
-      <button onclick="startAnalysis()">Start Analysis</button>
+      <button id="startBtn">🚀 Create Task</button>
+      <div id="statusBox">✨ Waiting for input...</div>
     </div>
 
-    <div class="status" id="statusBox">
-      <p>✨ Waiting for upload...</p>
+    <div class="dashboard">
+      <h2>📊 System Dashboard</h2>
+      <button id="refreshStatus">🔄 Refresh</button>
+      <div id="systemStatus" class="status-grid">
+        Loading status...
+      </div>
     </div>
+
+    <button id="langToggle">🌐 Switch Language (EN/Hindi)</button>
   </div>
 
-  <script src="main.js"></script>
+  <script type="module" src="/src/dashboard.js"></script>
+  <script>
+    const startBtn = document.getElementById("startBtn");
+    const statusBox = document.getElementById("statusBox");
+
+    startBtn.onclick = async () => {
+      const audio = document.getElementById("audioFile").files[0];
+      const videos = document.getElementById("videoFiles").files;
+      const prompt = document.getElementById("promptInput").value.trim();
+      if (!audio) return alert("Please upload at least one song!");
+
+      const formData = new FormData();
+      formData.append("audio", audio);
+      for (let v of videos) formData.append("video", v);
+      formData.append("prompt", prompt);
+
+      statusBox.innerHTML = "⏳ Uploading and creating task...";
+      const res = await fetch("/api/tasks/new", { method: "POST", body: formData });
+      const data = await res.json();
+
+      statusBox.innerHTML = data.ok
+        ? `✅ Task Created: <b>${data.taskId}</b>`
+        : "❌ Task failed to create!";
+    };
+
+    document.getElementById("langToggle").onclick = () => {
+      const body = document.body;
+      body.lang = body.lang === "hi" ? "en" : "hi";
+      alert(body.lang === "hi" ? "अब हिन्दी मोड चालू है!" : "Switched to English!");
+    };
+  </script>
 </body>
 </html>
