@@ -10,7 +10,7 @@ const app = express();
 // 🔥 Render-safe PORT
 const PORT = process.env.PORT || 5000;
 
-// 🔥 Render/Vercel CORS Fix
+// 🔥 CORS Fix (Vercel + Render)
 app.use(
   cors({
     origin: "*",
@@ -21,25 +21,25 @@ app.use(
 
 app.use(express.json());
 
-// 🔥 PUBLIC STATIC FILES FOR OUTPUT + LOGS (Render Safe)
+// 🔥 STORAGE SETUP
 const STORAGE = path.join(os.homedir(), "AI-AMV-STUDIO", "storage");
 const TEMP = path.join(STORAGE, "temp");
 const OUTPUT = path.join(STORAGE, "output");
 const LOGS = path.join(STORAGE, "logs");
 
-// Auto create folders (Render + Termux safe)
+// Auto create folders (safe for Termux + Render)
 for (const dir of [STORAGE, TEMP, OUTPUT, LOGS]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-// Serve output + logs to frontend
+// Serve output + logs directories
 app.use("/output", express.static(OUTPUT));
 app.use("/logs", express.static(LOGS));
 
-// Multer upload config (safe for Render)
+// Multer upload temp config
 const upload = multer({ dest: TEMP });
 
-// 🟢 Create new AI-AMV task
+// 🟢 Create new task
 app.post(
   "/api/tasks/new",
   upload.fields([{ name: "audio" }, { name: "video" }]),
@@ -59,6 +59,7 @@ app.post(
       };
 
       fs.writeFileSync(taskPath, JSON.stringify(taskData, null, 2));
+
       console.log(`[SERVER] ✅ Task created: ${id}`);
       res.json({ ok: true, taskId: id });
     } catch (err) {
@@ -68,7 +69,7 @@ app.post(
   }
 );
 
-// 🧠 Backend Status (for Dashboard)
+// 🧠 System Status
 app.get("/status", (req, res) => {
   const uptime_seconds = process.uptime();
   const backend = "running";
@@ -86,13 +87,34 @@ app.get("/status", (req, res) => {
   });
 });
 
-// 🔥 Disable frontend serving on Render (Vercel will handle it)
-// ✔️ Avoids Render crashes
+// 🟢 List tasks (Render-safe)
+app.get("/tasks", (req, res) => {
+  try {
+    const files = fs.readdirSync(TEMP)
+      .filter(f => f.endsWith(".json"));
+    res.json(files);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
+// 🟢 List outputs (Render-safe)
+app.get("/outputs", (req, res) => {
+  try {
+    const files = fs.readdirSync(OUTPUT)
+      .filter(f => f.endsWith(".mp4"));
+    res.json(files);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
+// Root endpoint
 app.get("/", (req, res) => {
   res.json({ ok: true, message: "AI-AMV-STUDIO Backend Online" });
 });
 
-// Catch all API route
+// Catch-all endpoint
 app.get("*", (req, res) => {
   res.json({ ok: false, error: "Invalid route" });
 });
