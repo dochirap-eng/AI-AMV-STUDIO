@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: ai-amv-studio
+    runtime: node
+    branch: main
+    buildCommand: "npm install --prefix backend"
+    startCommand: "node backend/server.js"
+    autoDeploy: true
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PYTHON_PATH
+        value: python3
+      - key: STORAGE_DIR
+        value: /var/data
+
+    disk:
+      name: appdata
+      mountPath: /var/data
