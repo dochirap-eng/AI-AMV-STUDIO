@@ -1,91 +1,215 @@
-import os, time, json, subprocess, random
+#!/usr/bin/env python3
+# ============================================================
+#  AI-AMV-STUDIO — SUPREME BOSS AI (V3 FINAL)
+#  Controls all AI models, planning, decisions, fail-safe
+# ============================================================
 
-STORAGE = os.path.expanduser("~/AI-AMV-STUDIO/storage")
-TEMP = os.path.join(STORAGE, "temp")
-OUTPUT = os.path.join(STORAGE, "output")
+import os, time, json, random, subprocess, traceback
+from pathlib import Path
 
+ROOT = Path.home() / "AI-AMV-STUDIO"
+STORAGE = ROOT / "storage"
+TEMP = STORAGE / "temp"
+OUTPUT = STORAGE / "output"
+LOGS = STORAGE / "logs"
+
+LOGS.mkdir(parents=True, exist_ok=True)
+LOGFILE = LOGS / "boss_ai.log"
+
+# ============================================================
+# LOGGING SYSTEM
+# ============================================================
 def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] 🤖 {msg}", flush=True)
+    line = f"[BOSS {time.strftime('%H:%M:%S')}] {msg}"
+    print(line)
+    with open(LOGFILE, "a") as f:
+        f.write(line + "\n")
 
-def detect_pending_tasks():
-    tasks = [
-        os.path.join(TEMP, f) for f in os.listdir(TEMP)
-        if f.startswith("task_") and f.endswith(".json") and "_auto_plan" not in f
+
+# ============================================================
+#  SUPREME BOSS PERSONALITY (Smart + Creative)
+# ============================================================
+
+MOOD_EFFECTS = {
+    "sad": ["blue_soft", "slow_fade", "blur_light"],
+    "epic": ["impact_flash", "shake_heavy", "zoom_crash"],
+    "romantic": ["warm_glow", "soft_zoom"],
+    "dark": ["red_flash", "glitch_hard"],
+    "motivational": ["speed_pop", "white_flash"]
+}
+
+TRANSITIONS = [
+    "shake_cut", "cross_flash", "zoom_whip",
+    "spin_cut", "impact_cut", "anime_glitch"
+]
+
+EFFECTS = [
+    "soft_glow", "shake", "lighting_flash", "zoom_hit",
+    "glitch", "speedline", "color_pop"
+]
+
+
+# ============================================================
+#  AUTO-DETECT TASKS
+# ============================================================
+def detect_tasks():
+    return [
+        p for p in TEMP.glob("task_*.json")
+        if "_auto_plan" not in str(p)
     ]
-    return tasks
 
-def safe_load_task(path):
+
+# ============================================================
+# SAFE LOAD
+# ============================================================
+def load_task(path):
     try:
-        with open(path) as f:
-            task = json.load(f)
-        if not isinstance(task, dict):
-            log(f"⚠️ Invalid task format in {path}, skipping.")
-            return None
-        if "id" not in task:
-            task["id"] = os.path.basename(path).replace(".json", "")
-        return task
+        data = json.load(open(path))
+        if "id" not in data:
+            data["id"] = path.stem
+        return data
     except Exception as e:
-        log(f"⚠️ Failed to load {path}: {e}")
+        log(f"⚠️ Error loading task: {e}")
         return None
 
+
+# ============================================================
+# STEP 1 — INTELLIGENT AUDIO ANALYSIS
+# ============================================================
 def analyze_audio(task):
-    log(f"🎵 Analyzing audio for {task['id']} ...")
-    bpm = random.randint(80, 160)
-    mood = random.choice(["sad", "epic", "romantic", "dark", "motivational"])
-    task["analysis"] = {"bpm": bpm, "mood": mood}
+    log(f"🎵 AUDIO: Smart analysis for {task['id']}")
+
+    # Real audio analysis delegated to audio_analysis.py
+    try:
+        result = subprocess.check_output(
+            f'python3 {ROOT}/backend/audio_analysis.py "{task["audio"]}"',
+            shell=True
+        )
+        task["analysis"] = json.loads(result.decode())
+    except:
+        # fallback if script failed
+        task["analysis"] = {
+            "bpm": random.randint(90,180),
+            "mood": random.choice(list(MOOD_EFFECTS.keys())),
+            "error": "fallback_mode"
+        }
+
+    log(f"✔️ BPM={task['analysis']['bpm']} | Mood={task['analysis']['mood']}")
     return task
 
-def auto_find_clips(task):
-    log(f"🎬 Finding clips for mood: {task['analysis']['mood']}")
-    clips = [f"/sample_clips/{task['analysis']['mood']}_{i}.mp4" for i in range(1, 4)]
-    task["auto_clips"] = clips
+
+# ============================================================
+# STEP 2 — CLIP PICKER (SMART)
+# ============================================================
+def pick_clips(task):
+    mood = task["analysis"]["mood"]
+    log(f"🎬 CLIPS: Picking best clips for mood → {mood}")
+
+    # Later: Replace with online free AI clip finder
+    task["clips"] = [
+        f"/sample_clips/{mood}_{i}.mp4"
+        for i in range(1, 5)
+    ]
     return task
 
-def generate_edit_plan(task):
-    log("🧩 Generating edit plan...")
-    plan = [{"clip": c, "start": 0, "end": 5, "effect": "fade"} for c in task["auto_clips"]]
-    plan_path = os.path.join(TEMP, f"{task['id']}_auto_plan.json")
-    with open(plan_path, "w") as f:
-        json.dump(plan, f, indent=2)
-    task["plan_path"] = plan_path
-    log(f"📋 Edit plan saved: {plan_path}")
+
+# ============================================================
+# STEP 3 — SUPREME EDIT PLAN GENERATOR
+# ============================================================
+def generate_plan(task):
+    mood = task["analysis"]["mood"]
+    bpm = task["analysis"]["bpm"]
+
+    log("🧩 PLAN: Creating Supreme Edit Plan...")
+
+    time_pos = 0
+    plan = []
+
+    for c in task["clips"]:
+        plan.append({
+            "clip": c,
+            "start": time_pos,
+            "end": time_pos + 4,
+            "effect": random.choice(EFFECTS),
+            "transition": random.choice(TRANSITIONS),
+            "mood_fx": random.choice(MOOD_EFFECTS[mood]),
+            "beat_sync": bpm
+        })
+        time_pos += 4
+
+    plan_path = TEMP / f"{task['id']}_auto_plan.json"
+    json.dump(plan, open(plan_path, "w"), indent=2)
+
+    task["plan_path"] = str(plan_path)
+    log(f"✔️ PLAN saved: {plan_path}")
     return task
 
-def render_auto_video(task):
-    output_name = f"auto_{task['id']}.mp4"
-    output_path = os.path.join(OUTPUT, output_name)
-    log("🎞️ Rendering auto video...")
+
+# ============================================================
+# STEP 4 — RENDER (DEMO — BLACK VIDEO)
+# ============================================================
+def render(task):
+    out = OUTPUT / f"{task['id']}_render.mp4"
+    log("🎞️ RENDER: (Demo Mode) Creating video...")
+
     subprocess.call(
-        f"ffmpeg -f lavfi -i color=c=black:s=640x360:d=5 -y {output_path}",
+        f"ffmpeg -f lavfi -i color=c=black:s=1280x720:d=6 -y {out}",
         shell=True
     )
-    task["output"] = output_path
-    log(f"✅ Rendered: {output_path}")
+    task["output"] = str(out)
+    log(f"✔️ RENDER DONE → {out}")
     return task
 
-def run_auto_mode():
-    log("🚀 AI Auto Mode started...")
-    while True:
-        pending = detect_pending_tasks()
-        if not pending:
-            log("💤 No new tasks... waiting 30s.")
-            time.sleep(30)
-            continue
-        for path in pending:
-            if "_auto_plan" in path:
-                log(f"⚠️ Skipped non-task file: {os.path.basename(path)}")
-                continue
-            task = safe_load_task(path)
-            if not task:
-                continue
-            task = analyze_audio(task)
-            task = auto_find_clips(task)
-            task = generate_edit_plan(task)
-            task = render_auto_video(task)
-            with open(path, "w") as f:
-                json.dump(task, f, indent=2)
-            log(f"🎉 Task {task['id']} completed!\n")
-        time.sleep(10)
 
+# ============================================================
+# FAIL-SAFE RECOVERY
+# ============================================================
+def save_task(task):
+    try:
+        json.dump(task, open(TEMP / f"{task['id']}.json", "w"), indent=2)
+    except:
+        log("❌ FAILED saving task!")
+
+
+# ============================================================
+# MAIN LOOP — SUPREME AI ENGINE
+# ============================================================
+def run():
+    log("🚀 SUPREME BOSS AI STARTED (V3)")
+    
+    while True:
+        tasks = detect_tasks()
+
+        if not tasks:
+            log("😴 Idle... waiting 10s")
+            time.sleep(10)
+            continue
+
+        for path in tasks:
+            try:
+                task = load_task(path)
+                if not task:
+                    continue
+
+                log(f"⚡ Processing {task['id']}")
+
+                task = analyze_audio(task)
+                task = pick_clips(task)
+                task = generate_plan(task)
+                task = render(task)
+
+                save_task(task)
+                log(f"🎉 COMPLETE → {task['id']}\n")
+
+            except Exception as e:
+                log("❌ CRASH in task: " + str(e))
+                traceback.print_exc()
+
+        time.sleep(5)
+
+
+# ============================================================
+# ENTRY POINT
+# ============================================================
 if __name__ == "__main__":
-    run_auto_mode()
+    run()

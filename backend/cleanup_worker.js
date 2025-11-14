@@ -1,4 +1,8 @@
-// cleanup_worker.js — Auto Cleanup System (local + cloud ready)
+// ========================================================
+//  AI-AMV-STUDIO — Ultra Smart Cleanup Engine (v2.0)
+//  Protects active tasks, trims logs, removes junk safely
+// ========================================================
+
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -12,45 +16,118 @@ const TEMP_DIR = path.join(STORAGE, "temp");
 const OUTPUT_DIR = path.join(STORAGE, "output");
 const LOGS_DIR = path.join(STORAGE, "logs");
 
-const log = (...msg) => console.log(`[${new Date().toISOString()}]`, ...msg);
-const DAYS_LIMIT = 7; // days
+// Retention rules
+const KEEP_DAYS = 7;          // keep recent files
+const MAX_LOG_LINES = 5000;   // trim logs
+const KEEP_OUTPUT_LIMIT = 40; // keep last 40 renders
 
-function deleteOldFiles(dir) {
-  if (!fs.existsSync(dir)) return 0;
-  const now = Date.now();
-  let deleted = 0;
+// ---------------------------
+// LOG SYSTEM
+// ---------------------------
+function log(msg) {
+  console.log(`[${new Date().toISOString()}] 🧹 ${msg}`);
+}
 
-  for (const file of fs.readdirSync(dir)) {
-    const filePath = path.join(dir, file);
-    try {
-      const stats = fs.statSync(filePath);
-      const ageDays = (now - stats.mtimeMs) / (1000 * 60 * 60 * 24);
+// ---------------------------
+// DELETE OLD FILES SAFELY
+// ---------------------------
+function deleteIfOld(filePath, daysLimit) {
+  try {
+    const stats = fs.statSync(filePath);
+    const ageDays = (Date.now() - stats.mtimeMs) / (1000 * 60 * 60 * 24);
 
-      // skip json tasks that are still active
-      if (file.startsWith("task_") && file.endsWith(".json")) {
-        const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
-        if (["processing", "queued", "resuming"].includes(data.status)) continue;
-      }
-
-      if (ageDays > DAYS_LIMIT) {
-        fs.rmSync(filePath, { recursive: true, force: true });
-        deleted++;
-      }
-    } catch (e) {
-      log("⚠️ Error deleting:", file, e.message);
+    if (ageDays > daysLimit) {
+      fs.rmSync(filePath, { recursive: true, force: true });
+      return true;
     }
+  } catch (e) {}
+  return false;
+}
+
+// ---------------------------
+// CLEAN TEMP FOLDER
+// ---------------------------
+function cleanTemp() {
+  if (!fs.existsSync(TEMP_DIR)) return;
+
+  let deleted = 0;
+  for (const file of fs.readdirSync(TEMP_DIR)) {
+    const filePath = path.join(TEMP_DIR, file);
+
+    // JSON tasks but check status to avoid deleting active tasks
+    if (file.startsWith("task_") && file.endsWith(".json")) {
+      try {
+        const data = JSON.parse(fs.readFileSync(filePath));
+        if (["processing", "queued"].includes(data.status)) continue;
+      } catch {}
+    }
+
+    if (deleteIfOld(filePath, KEEP_DAYS)) deleted++;
   }
   return deleted;
 }
 
-function cleanupOnce() {
-  log("🧹 Cleanup started...");
-  const tempDeleted = deleteOldFiles(TEMP_DIR);
-  const outputDeleted = deleteOldFiles(OUTPUT_DIR);
-  const logsDeleted = deleteOldFiles(LOGS_DIR);
-  log(`✅ Cleanup done → temp:${tempDeleted}, output:${outputDeleted}, logs:${logsDeleted}`);
+// ---------------------------
+// CLEAN OUTPUT (KEEP LATEST 40 FILES)
+// ---------------------------
+function cleanOutput() {
+  if (!fs.existsSync(OUTPUT_DIR)) return;
+
+  const files = fs.readdirSync(OUTPUT_DIR)
+    .filter(f => f.endsWith(".mp4") || f.endsWith(".mov") || f.endsWith(".mkv"))
+    .map(f => path.join(OUTPUT_DIR, f))
+    .sort((a, b) => fs.statSync(a).mtimeMs - fs.statSync(b).mtimeMs); // oldest first
+
+  let deleted = 0;
+
+  while (files.length > KEEP_OUTPUT_LIMIT) {
+    const file = files.shift();
+    fs.rmSync(file, { force: true });
+    deleted++;
+  }
+
+  return deleted;
 }
 
-cleanupOnce();
-setInterval(cleanupOnce, 24 * 60 * 60 * 1000); // run every 24h
-log("♻️ Auto Cleanup Worker Running (every 24h)");
+// ---------------------------
+// TRIM LOG FILES
+// ---------------------------
+function trimLogs() {
+  if (!fs.existsSync(LOGS_DIR)) return;
+
+  let trimmed = 0;
+
+  for (const file of fs.readdirSync(LOGS_DIR)) {
+    const filePath = path.join(LOGS_DIR, file);
+
+    try {
+      const lines = fs.readFileSync(filePath, "utf-8").split("\n");
+      if (lines.length > MAX_LOG_LINES) {
+        const newData = lines.slice(-MAX_LOG_LINES).join("\n");
+        fs.writeFileSync(filePath, newData);
+        trimmed++;
+      }
+    } catch {}
+  }
+
+  return trimmed;
+}
+
+// ---------------------------
+// MAIN CLEANUP FUNCTION
+// ---------------------------
+function runCleanup() {
+  log("Cleanup started...");
+
+  const t = cleanTemp();
+  const o = cleanOutput();
+  const l = trimLogs();
+
+  log(`✔ Cleanup complete → temp:${t}, output:${o}, logs_trimmed:${l}`);
+}
+
+// Run immediately and then every 12 hours
+runCleanup();
+setInterval(runCleanup, 12 * 60 * 60 * 1000);
+
+log("♻ Smart Cleanup Worker running every 12 hours.");

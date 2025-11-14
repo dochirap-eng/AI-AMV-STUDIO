@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# === AI-AMV-STUDIO — Termux Audio Analyzer ===
-# Uses ffmpeg + pure python for BPM + mood detection
+# === AI-AMV-STUDIO — SUPER INTELLIGENT AUDIO ANALYSIS ENGINE ===
+# Creative Boss AI + Deep Mood Logic + Fast FFmpeg Engine
 
 import subprocess
 import re
@@ -8,106 +8,143 @@ import sys
 import json
 import os
 import math
+from statistics import mean
 
+# -----------------------------
+# 🔥 FAST LOG
+# -----------------------------
+def log(x):
+    print(f"[AUDIO] {x}", flush=True)
+
+# -----------------------------
+# 🎧 BASIC FFPROBE INFO
+# -----------------------------
 def ffmpeg_stats(path):
-    cmd = f'ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{path}"'
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     try:
-        duration = float(result.stdout.strip())
+        cmd = f'ffprobe -v quiet -show_entries format=duration -of default=nokey=1:noprint_wrappers=1 "{path}"'
+        d = float(subprocess.run(cmd, shell=True, capture_output=True, text=True).stdout.strip())
     except:
-        duration = 0.0
+        d = 0.0
 
-    # volume
-    cmd_vol = (
-        f'ffmpeg -i "{path}" -af "volumedetect" -f null - 2>&1 | grep mean_volume'
-    )
-    res = subprocess.run(cmd_vol, shell=True, capture_output=True, text=True)
-    try:
-        mean_vol = re.findall(r"mean_volume:\s*(-?\d+\.?\d*)", res.stdout)
-        mean_vol = float(mean_vol[0]) if mean_vol else -20.0
-    except:
-        mean_vol = -20.0
+    # volume detection
+    cmd2 = f'ffmpeg -i "{path}" -af "volumedetect" -f null - 2>&1'
+    res = subprocess.run(cmd2, shell=True, capture_output=True, text=True)
+    vol = re.search(r"mean_volume:\s*(-?\d+\.?\d*)", res.stdout)
+    vol = float(vol.group(1)) if vol else -20.0
 
-    return duration, mean_vol
+    return d, vol
 
+# -----------------------------
+# 🎼 WAVEFORM + ENERGY
+# -----------------------------
 def extract_wave(path):
-    """Extract PCM waveform using ffmpeg — pure python compatible"""
-    cmd = f'ffmpeg -i "{path}" -ac 1 -ar 8000 -f s16le - 2>/dev/null'
+    cmd = f'ffmpeg -i "{path}" -ac 1 -ar 11025 -f s16le - 2>/dev/null'
     raw = subprocess.run(cmd, shell=True, capture_output=True).stdout
     data = []
+
     for i in range(0, len(raw), 2):
-        sample = int.from_bytes(raw[i:i+2], "little", signed=True)
-        data.append(sample / 32768.0)
+        smp = int.from_bytes(raw[i:i+2], "little", signed=True)
+        data.append(smp / 32768.0)
+
     return data
 
-def estimate_bpm(samples, sr=8000):
+# -----------------------------
+# 🥁 BPM ESTIMATE (Improved)
+# -----------------------------
+def estimate_bpm(samples, sr=11025):
     if len(samples) < sr:
-        return 110
+        return 118
 
-    # envelope
-    energy = [abs(s) for s in samples]
+    energy = [abs(x) for x in samples]
+    threshold = mean(energy) * 1.2
 
-    # peak detect
-    peaks = []
-    threshold = sum(energy) / len(energy)
-    for i in range(1, len(energy)-1):
-        if energy[i] > threshold and energy[i] > energy[i-1] and energy[i] > energy[i+1]:
-            peaks.append(i)
+    peaks = [
+        i for i in range(1, len(energy)-1)
+        if energy[i] > threshold and energy[i] > energy[i-1] and energy[i] > energy[i+1]
+    ]
 
-    if len(peaks) < 2:
+    if len(peaks) < 3:
         return 120
 
-    intervals = []
-    for i in range(1, len(peaks)):
-        intervals.append((peaks[i] - peaks[i-1]) / sr)
+    intervals = [(peaks[i] - peaks[i-1]) / sr for i in range(1, len(peaks))]
+    avg = mean(intervals)
+    bpm = int(max(60, min(200, 60 / avg)))
+    return bpm
 
-    if len(intervals) == 0:
-        return 125
-
-    avg_interval = sum(intervals) / len(intervals)
-    bpm = 60 / avg_interval
-    return int(max(60, min(bpm, 200)))
-
+# -----------------------------
+# 🎭 ADVANCED MOOD ENGINE
+# -----------------------------
 def detect_mood(bpm, volume, energy):
-    if bpm > 160:
+    intense = bpm > 145 or energy > 0.12
+    soft = bpm < 95 and volume < -17
+
+    if intense:
         return "aggressive"
     if bpm > 130:
-        return "energetic"
-    if bpm < 85 and volume < -18:
+        return "epic"
+    if soft:
         return "sad"
-    if bpm < 100:
-        return "calm"
-    if 100 <= bpm <= 130:
+    if 100 <= bpm <= 125:
         return "romantic"
     return "cinematic"
 
+# -----------------------------
+# 🔥 SUB-MOOD (Extra Layer)
+# -----------------------------
+def detect_submood(bpm, energy):
+    if bpm > 160: return "impact"
+    if bpm < 85: return "emotional"
+    if energy > 0.10: return "hype"
+    return "flow"
+
+# -----------------------------
+# 🎬 STYLE CLASSIFIER (AMV)
+# -----------------------------
+def detect_edit_style(bpm, mood):
+    if mood == "aggressive": return "velocity"
+    if mood == "epic": return "impact"
+    if mood == "sad": return "emotional-sync"
+    if mood == "romantic": return "smooth-flow"
+    return "cinematic-glow"
+
+# -----------------------------
+# 🧠 SMART ANALYZE
+# -----------------------------
 def analyze(path):
     if not os.path.exists(path):
-        return {"error": f"{path} not found"}
+        return {"error": "File not found"}
 
     duration, volume = ffmpeg_stats(path)
-    samples = extract_wave(path)
+    wave = extract_wave(path)
+    if len(wave) == 0:
+        return {"error": "Decode error"}
 
-    if len(samples) == 0:
-        return {"error": "decode_failed"}
+    # energy, bpm
+    energy = mean([abs(s) for s in wave])
+    bpm = estimate_bpm(wave)
 
-    energy = sum(abs(s) for s in samples) / len(samples)
-    bpm = estimate_bpm(samples)
-
+    # main mood
     mood = detect_mood(bpm, volume, energy)
+    submood = detect_submood(bpm, energy)
+    style = detect_edit_style(bpm, mood)
 
     return {
         "duration": round(duration, 2),
-        "mean_volume": f"{round(volume, 2)} dB",
+        "volume": round(volume, 2),
         "bpm": bpm,
         "energy": round(energy, 4),
-        "mood": mood
+        "mood": mood,
+        "sub_mood": submood,
+        "edit_style": style
     }
 
+# -----------------------------
+# 🔌 CLI DIRECT CALL
+# -----------------------------
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: audio_analysis.py <audio file>")
+        print("Usage: audio_analysis.py <audiofile>")
         sys.exit(1)
 
-    path = sys.argv[1]
-    print(json.dumps(analyze(path), indent=2))
+    out = analyze(sys.argv[1])
+    print(json.dumps(out, indent=2))

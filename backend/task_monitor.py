@@ -1,90 +1,126 @@
 #!/usr/bin/env python3
-# task_monitor.py — Simple Task Monitor API (Flask)
+# === AI-AMV-STUDIO — Ultra Task Monitor ===
+# Fast, crash-proof, Termux optimized, auto-cleanup
 
 import os, json, time
-from flask import Flask, jsonify, send_file, abort
+from flask import Flask, jsonify, send_file
 
 ROOT = os.path.expanduser("~/AI-AMV-STUDIO")
-STORAGE = os.path.join(ROOT, "storage")
-TEMP = os.path.join(STORAGE, "temp")
-OUTPUT = os.path.join(STORAGE, "output")
-LOGS = os.path.join(STORAGE, "logs")
+TEMP = os.path.join(ROOT, "storage/temp")
+OUTPUT = os.path.join(ROOT, "storage/output")
+LOGS = os.path.join(ROOT, "storage/logs")
 
-os.makedirs(TEMP, exist_ok=True)
-os.makedirs(OUTPUT, exist_ok=True)
-os.makedirs(LOGS, exist_ok=True)
+for d in [TEMP, OUTPUT, LOGS]:
+    os.makedirs(d, exist_ok=True)
 
 app = Flask("task_monitor")
 
-def list_tasks():
-    out = []
-    for fname in sorted(os.listdir(TEMP)):
-        if not fname.startswith("task_") or not fname.endswith(".json"):
-            continue
-        p = os.path.join(TEMP, fname)
-        try:
-            j = json.load(open(p, "r"))
-        except Exception:
-            j = {"_raw": True}
-        j["_file"] = fname
-        out.append(j)
-    return out
+CACHE = {
+    "tasks": [],
+    "outputs": [],
+    "last_update": 0
+}
 
+# ---------------------------------------------------
+# LOG Helper
+# ---------------------------------------------------
+def log(msg):
+    print(f"[{time.strftime('%H:%M:%S')}] 🛰️ {msg}", flush=True)
+
+# ---------------------------------------------------
+# SMART CACHE REFRESHER
+# ---------------------------------------------------
+def refresh_cache():
+    now = time.time()
+    if now - CACHE["last_update"] < 3:
+        return CACHE  # return old data to reduce CPU load
+
+    # Refresh tasks
+    tasks = []
+    for f in sorted(os.listdir(TEMP)):
+        if f.startswith("task_") and f.endswith(".json"):
+            path = os.path.join(TEMP, f)
+            try:
+                data = json.load(open(path, "r"))
+            except:
+                data = {"error": "corrupt"}
+            data["_file"] = f
+            tasks.append(data)
+
+    # Refresh outputs
+    outs = []
+    for f in sorted(os.listdir(OUTPUT)):
+        if f.lower().endswith((".mp4", ".mov", ".mkv")):
+            stat = os.stat(os.path.join(OUTPUT, f))
+            outs.append({
+                "file": f,
+                "size": stat.st_size,
+                "mtime": int(stat.st_mtime)
+            })
+
+    CACHE["tasks"] = tasks
+    CACHE["outputs"] = outs
+    CACHE["last_update"] = now
+    return CACHE
+
+# ---------------------------------------------------
+# ROUTES
+# ---------------------------------------------------
 @app.route("/")
-def index():
-    return jsonify({"service": "AI-AMV Task Monitor", "ok": True, "time": int(time.time())})
+def home():
+    return jsonify({"service": "AI-AMV Ultra Task Monitor", "ok": True})
 
 @app.route("/tasks")
 def api_tasks():
-    return jsonify(list_tasks())
+    return jsonify(refresh_cache()["tasks"])
 
-@app.route("/tasks/<taskid>")
+@app.route("/task/<taskid>")
 def api_task(taskid):
     path = os.path.join(TEMP, f"{taskid}.json")
     if not os.path.exists(path):
         return jsonify({"error": "not_found"}), 404
-    try:
-        return send_file(path, mimetype="application/json")
-    except Exception:
-        return jsonify({"error": "read_failed"}), 500
+    return send_file(path, mimetype="application/json")
 
 @app.route("/outputs")
 def api_outputs():
-    files = []
-    for f in sorted(os.listdir(OUTPUT)):
-        if f.endswith(".mp4") or f.endswith(".mov") or f.endswith(".mkv"):
-            st = os.stat(os.path.join(OUTPUT, f))
-            files.append({"file": f, "size": st.st_size, "mtime": int(st.st_mtime)})
-    return jsonify(files)
+    return jsonify(refresh_cache()["outputs"])
 
 @app.route("/output/<fname>")
 def api_output_file(fname):
     safe = os.path.basename(fname)
-    p = os.path.join(OUTPUT, safe)
-    if not os.path.exists(p): return jsonify({"error":"not_found"}), 404
-    return send_file(p, conditional=True)
+    path = os.path.join(OUTPUT, safe)
+    if not os.path.exists(path):
+        return jsonify({"error": "not_found"}), 404
+    return send_file(path, conditional=True)
 
-@app.route("/logs/<name>")
-def api_log_tail(name):
-    safe = os.path.basename(name)
-    p = os.path.join(LOGS, safe)
-    if not os.path.exists(p): return jsonify({"error":"not_found"}), 404
+@app.route("/logs/<fname>")
+def api_logs(fname):
+    safe = os.path.basename(fname)
+    path = os.path.join(LOGS, safe)
 
-    # return last 200 lines (lightweight)
+    if not os.path.exists(path):
+        return jsonify({"error": "not_found"}), 404
+
     try:
-        with open(p, "r", errors="ignore") as f:
-            lines = f.readlines()[-200:]
-        return "<pre>{}</pre>".format("".join(lines)), 200, {"Content-Type": "text/html; charset=utf-8"}
+        with open(path, "r", errors="ignore") as f:
+            data = f.readlines()[-150:]  # last 150 lines
+        return "<pre>" + "".join(data) + "</pre>"
     except Exception as e:
-        return jsonify({"error":"read_failed", "detail": str(e)}), 500
+        return jsonify({"error": "read_failed", "detail": str(e)}), 500
 
 @app.route("/health")
-def health():
-    ok = {"ok": True, "temp_count": len([f for f in os.listdir(TEMP) if f.endswith(".json")]),
-          "outputs": len([f for f in os.listdir(OUTPUT) if f.endswith(".mp4")]),
-          "time": int(time.time())}
-    return jsonify(ok)
+def api_health():
+    cache = refresh_cache()
+    return jsonify({
+        "ok": True,
+        "task_count": len(cache["tasks"]),
+        "outputs": len(cache["outputs"]),
+        "timestamp": int(time.time())
+    })
 
+# ---------------------------------------------------
+# START
+# ---------------------------------------------------
 if __name__ == "__main__":
-    # run on port 5050 so it doesn't clash with backend
+    log("🚀 Ultra Task Monitor running on port 5050")
     app.run(host="0.0.0.0", port=5050, debug=False)
